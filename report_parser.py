@@ -1,6 +1,7 @@
 from os import listdir, path
 import sys
 import argparse
+import logging
 
 class bcolors:
     WARNING = '\033[93m'
@@ -44,7 +45,7 @@ def folder_parser(path_to_folder, paths):
                 paths.update([tmp_paths])
             elif type(tmp_paths) == list:
                 paths.update(tmp_paths)
-        elif f.endswith('report.tsv'):
+        elif f.endswith('WGS.report.tsv'):
             path_to_report = path.join(path_to_folder, f)
             return path_to_report
         
@@ -64,19 +65,32 @@ def report_parser(args):
     common_list = []
     headers = ['sample', 'mean coverage', 'contamination status']
     
-    paths = folder_parser(args.main_dir, set())
+    if path.exists(args.main_dir) == False:
+        logger.error('%s does not exist', args.main_dir)
+        sys.exit(1)
         
-    for report_file in paths:
+    paths = folder_parser(args.main_dir, set())
+    paths_dict = {path.basename(p).split('.')[0]:p for p in paths}
+    sorted_paths_dict = dict(sorted(paths_dict.items()))
+    paths_list = list(sorted_paths_dict.values())
+        
+    for report_file in paths_list:
         common_list.append(file_parser(report_file, args.threshold))
         
-    paths.clear()   
+    paths.clear()
+    paths_dict.clear()
+    sorted_paths_dict.clear()
+    paths_list.clear()
+    
     printer(headers, common_list)
     common_list.clear()
 
 pars = argparse.ArgumentParser(description = 'Script for checking contamination and coverage by WGS reports. If mean coverage < threshold or contamination status is "YES", the line is highlighted in red. If contamination status is "ND", the line is highlighted in yellow.')
-pars.add_argument('--main-dir', help = 'Project folder')
+pars.add_argument('main_dir', help = 'Project folder')
 pars.add_argument('--threshold', type = float, default = 30, help = 'Coverage threshold. Default is 30')
 args = pars.parse_args()
+
+logger = logging.getLogger(__name__)
 
 report_parser(args)
 
